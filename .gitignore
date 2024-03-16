@@ -1,0 +1,8 @@
+-- SQLite.sql
+Tareas.txt
+__pycache__/
+venv/
+music/
+myusic.db
+pruebas.py
+ffmpeg/
