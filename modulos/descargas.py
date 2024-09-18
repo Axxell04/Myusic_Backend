@@ -17,6 +17,9 @@ class Core():
         self.conversor = conversor.Core()
         self.db_manager = DB_Manager()
 
+    def close(self):
+        self.db_manager.close()
+
     def descargar(self, link='', music_name='') -> dict | None:
         if not os.path.exists(self.PATH_MUSIC):
             os.mkdir(self.PATH_MUSIC)
@@ -166,7 +169,7 @@ class Core():
                                     #Comprobar si se logró crear la nueva playlist
                                     if playlist_id:
                                         #Asociar cada canción a la nueva playlist
-                                        self.db_manager.add_music_to_playlist(playlist_id, music.id)
+                                        self.db_manager.add_musics_to_playlist(playlist_id, [music.id])
                                     
                                 else:
                                     print(f"PATH: {music_path} | Error de conversión")
@@ -174,7 +177,7 @@ class Core():
                             else: #La canción ya está registrada o no se puedo validar su existencia
                                 if type(music_id) == int: #Si music_id es de tipo INT significa que la canción ya está registrada
                                     if playlist_id: #Asociamos la canción ya registrada a la nueva playlist
-                                        self.db_manager.add_music_to_playlist(playlist_id, music_id)
+                                        self.db_manager.add_musics_to_playlist(playlist_id, [music_id])
                                 else: #Si music_id no es de tipo INT entonces es NONE, lo que significa que no se pudo realizar la validación
                                     pass #Simplemente no descargamos la canción y seguimos con la descarga de la playlist
                                     

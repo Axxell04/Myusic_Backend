@@ -14,7 +14,10 @@ if not os.path.exists(MUSIC_PATH):
 def get_local_ip():
     try:
         hostname = socket.gethostname()
-        local_ip = socket.gethostbyname(hostname)
+        _, _, list_ip = socket.gethostbyname_ex(hostname)
+        local_ip = list_ip[-1]
+        #local_ip = socket.gethostbyname(hostname)
+        
         return local_ip
     except socket.error as e:
         print(f"Error al obtener la IP local: {e}")

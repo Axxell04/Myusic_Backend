@@ -41,6 +41,9 @@ class DB_Manager():
                                 PRIMARY KEY (playlist_id, music_id)
                             )
                            ''')
+            
+    def close(self):
+        self.conexion.close()
     
     def query_musics(self, query: str = "", params: tuple = ()) -> ListModels:
         response = ListModels()
@@ -150,8 +153,9 @@ class DB_Manager():
         return response
             
     
-    def delete_musics(self, id: int = 0, all: bool = False) -> bool:
-        if id:
+    def delete_musics(self, musics_id: list = []) -> bool:
+        complete = False
+        for id in musics_id:
             response = self.get_musics(id=id)
             if not response.len():
                 print("MUSIC_PATH NO ENCONTRADO")
@@ -172,25 +176,23 @@ class DB_Manager():
                     query = "DELETE FROM playlist_music WHERE music_id = ?"
                     response = self.query_musics(query=query, params=params)
         
-            if response.is_exception:
-                return False
-            else:
-                return True
-        elif all:
-            try:
-                print(f"Eliminando: {config.MUSIC_PATH}")
-                shutil.rmtree(config.MUSIC_PATH)
-            except:
-                print("Error al remover el directorio")
-            for table in ("musics", "playlists", "playlist_music"):
-                query = f"DELETE FROM {table}"
-                response = self.query_musics(query=query)
-            if response == None:
-                return False
-            else:
-                return True
-        else:
-            return False
+            if not response.is_exception:
+                complete = True
+        return complete
+            
+    # def delete_db(self):
+    #     try:
+    #         print(f"Eliminando: {config.MUSIC_PATH}")
+    #         shutil.rmtree(config.MUSIC_PATH)
+    #     except:
+    #         print("Error al remover el directorio")
+    #     for table in ("musics", "playlists", "playlist_music"):
+    #         query = f"DELETE FROM {table}"
+    #         response = self.query_musics(query=query)
+    #         if response == None:
+    #             return False
+    #         else:
+    #             return True
             
     def add_playlist(self, name: str) -> int | None:
         #Que pasa si 2 playlists tienen el mismo nombre?  RESOLVER
@@ -309,47 +311,56 @@ class DB_Manager():
                 return exists        
                 
          
-    def add_music_to_playlist(self, playlist_id: int, music_id: int) -> bool | None:
-        exists_conecction = self.exists_connection_m_t_p(playlist_id=playlist_id, music_id=music_id)
-        if exists_conecction == None:
-            return None
-        elif exists_conecction == True:
-            return False
-        
-        query = "INSERT INTO playlist_music(playlist_id, music_id) VALUES (?, ?);"
-        params = (playlist_id, music_id)
+    def add_musics_to_playlist(self, playlist_id: int = 0, musics_id: list = []) -> bool:
         complete = False
-        with self.conexion:
-            try:
-                cursor = self.conexion.cursor()
-                cursor.execute(query, params)
-                complete = True
-            except Exception as e:
-                print("No se logró asociar la canción a la playlist")
-                print(e)
-                complete = None
-            finally:
-                return complete
+        for music_id in musics_id:
+            skip = False
+            exists_conecction = self.exists_connection_m_t_p(playlist_id=playlist_id, music_id=music_id)
+            if exists_conecction == None:
+                skip = True
+            elif exists_conecction == True:
+                skip = True
+            
+            if not skip:
+                query = "INSERT INTO playlist_music(playlist_id, music_id) VALUES (?, ?);"
+                params = (playlist_id, music_id)
+                with self.conexion:
+                    try:
+                        cursor = self.conexion.cursor()
+                        cursor.execute(query, params)
+                        complete = True
+                    except Exception as e:
+                        print("No se logró asociar la canción a la playlist")
+                        print(e)
+                        # complete = None
+                
+        return complete
     
-    def remove_music_of_playlist(self, playlist_id: int = 0, music_id: int = 0) -> bool | None:
-        exists_connection = self.exists_connection_m_t_p(playlist_id=playlist_id, music_id=music_id)
-        if exists_connection == None:
-            return None
-        elif exists_connection == False:
-            return False
-
-        query = "DELETE FROM playlist_music WHERE playlist_id = ? AND music_id = ?"
-        params = (playlist_id, music_id)
+    def remove_music_of_playlist(self, playlist_id: int = 0, musics_id: list = []) -> bool:
         complete = False
-        with self.conexion:
-            try:
-                cursor = self.conexion.cursor()
-                cursor.execute(query, params)
-                complete = True
-            except:
-                complete = None
-            finally:
-                return complete
+        for music_id in musics_id:
+            skip = False
+            exists_connection = self.exists_connection_m_t_p(playlist_id=playlist_id, music_id=music_id)
+            if exists_connection == None:
+                skip = True
+            elif exists_connection == False:
+                skip = True
+
+            if not skip:
+                query = "DELETE FROM playlist_music WHERE playlist_id = ? AND music_id = ?"
+                params = (playlist_id, music_id)
+                complete = False
+                with self.conexion:
+                    try:
+                        cursor = self.conexion.cursor()
+                        cursor.execute(query, params)
+                        complete = True
+                    except:
+                        print("No se logró asociar la canción a la playlist")
+                        print(e)
+                        # complete = None
+                
+        return complete
     
     def get_musics_playlist(self, id: int = 0) -> ListModels:
         response = ListModels()

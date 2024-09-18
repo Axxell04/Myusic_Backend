@@ -1,4 +1,5 @@
 import threading
+import asyncio
 import sqlite3
 import json
 import os
@@ -9,9 +10,10 @@ from pydantic import BaseModel
 from typing import Union
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, WebSocket
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse
+from asyncio import TimeoutError
 
 # from .modulos.descargas import Core as Downloader
 import config
@@ -19,11 +21,40 @@ from models import ResData
 from modulos.descargas import Core as Downloader
 from db import DB_Manager
 
+class Ws_Manager():
+    def __init__(self) -> None:
+        self.connections = {}
+    
+    async def add_connection(self, host: str, websocket: WebSocket):
+        if host in self.connections:
+            connection = self.connections.pop(host)
+            try:
+                await connection.close()
+            except:
+                pass
+            
+        self.connections.update({host: websocket})
+        print(f"Cliente conectado: {websocket.client}")
+        print(f"Clientes actuales: {self.get_connections()}")
+        
+    def get_connections(self) -> dict:
+        return self.connections
+    
+    async def remove_connection(self, host: str):
+        if host in self.connections:
+            connection = self.connections.pop(host)
+            try:
+                await connection.close()
+            except:
+                pass
+            print(f"Cliente desconectado: {connection.client}")
+            print(f"Clientes actuales: {self.get_connections()}")
+            
+ws_Manager = Ws_Manager()            
+
 db_manager = DB_Manager()
 
 app = FastAPI()
-
-inst_downloader = Downloader()
 
 webSocket_connection = None
 
@@ -64,149 +95,206 @@ def download(id: int):
 
 @app.websocket("/")
 async def websocket_endpoint(websocket: WebSocket):
-    global webSocket_connection, db_manager
+    global ws_Manager, db_manager
     await websocket.accept()
-    webSocket_connection = websocket
+    host = websocket.client.host
+    await ws_Manager.add_connection(host, websocket)
+
     try:
         while True:
-            rec = await websocket.receive()
-            rec_data = json.loads(rec["text"])
-            
-            #Parametros de entrada
-            command = rec_data.get("command", "")
-            content= rec_data.get("content", "")
-            
-            #Modelo de respuesta
-            res_data = ResData(command_received=command)
-            message = ""
-            response = {}
-
-            if "download" == command:
-                try:
-                    res_download = inst_downloader.descargar(link=content)        
-                except:
-                    pass
-                
-                if res_download['success']:
-                    message = res_download['message']
-                    response = res_download['data']
+            try:
+                rec = await websocket.receive()
+                print(f"REC: {rec}")
+                if "text" in rec:
+                    rec_data = json.loads(rec["text"])
                 else:
-                    message = res_download['message']
-                    response = res_download['data']                    
+                    # await websocket.close()
+                    return None
+                    # break
+                print(rec_data)
                 
-            elif "get_musics" == command:
-                if 'all' in content:
-                    response = db_manager.get_musics(all=True).get_models_dump()
-                elif "author" in content:
-                    response = db_manager.get_musics(author=content["author"]).get_models_dump()
-                elif "name" in content:
-                    response = db_manager.get_musics(name=content["name"]).get_models_dump()
-                elif "id" in content:
-                    response = db_manager.get_musics(id=content["id"]).get_models_dump()
+                #Parametros de entrada
+                command = rec_data.get("command", "")
+                content= rec_data.get("content", "")
                 
-                if response:
-                    message = "Success"
-                else:
-                    message = "Musics not found"
-                    
-            elif "delete_music" == command:
-                if "id" in content:
-                    check = db_manager.delete_musics(id=content["id"])
-                        
-                elif "all" in content:
-                    check = db_manager.delete_musics(all=True)
-                
-                if check:
-                    message = "Delete Success"
-                else:
-                    message = "Delete Error"
-            
-            elif "create_playlist" == command:
-                if "name" in content:
-                    valid = db_manager.validate_new_playlist(name=content["name"])
-                    if valid == 0:
-                        response = {"id": db_manager.add_playlist(name=content["name"])}
-                    elif valid > 0:
-                        response = {"id": valid}
-                    else:
-                        message = "Failed validation"
-                
-                if response:
-                    if valid == 0:
-                        message = "Success"
-                    else:
-                        message = "Playlist already created"
-                else:
-                    if message:
-                        message = f"Error creating playlist | {message}"
-                    else:
-                        message = "Error creating playlist"
-                        
-            elif "get_playlists" == command:
-                if "all" in content:
-                    response = db_manager.get_playlists(all=True).get_models_dump()
-                elif "id" in content:
-                    response = db_manager.get_playlists(id=content["id"]).get_models_dump()
-                elif "name" in content:
-                    response = db_manager.get_playlists(name=content["name"]).get_models_dump()
-                    
-                if response:
-                    message = "Success"
-                else:
-                    message = "Playlists not found"
-            
-            elif "delete_playlist" == command:
-                if "id" in content:
-                    complete = db_manager.delete_playlists(id=content["id"])
-                    if complete:
-                        message = "Success"
-                    elif complete == False:
-                        message = "Playlist not found"
-                    elif complete == None:
-                        message = "Delete error"
-            
-            elif "add_music_to_playlist"  == command:
-                if "music_id" in content and "playlist_id" in content:
-                    complete = db_manager.add_music_to_playlist(playlist_id=content["playlist_id"], music_id=content["music_id"])
-                
-                if complete:
-                    message = "Success"
-                elif complete == False:
-                    message = "The music is already in the playlist"
-                else:
-                    message = "Error adding music"
-            
-            elif "get_musics_of_playlist" == command:
-                if "id" in content:
-                    response = db_manager.get_musics_playlist(id=content["id"]).get_models_dump()
-                
-                if response:
-                    message = "Success"
-                else:
-                    message = "Musics not found"
-            
-            elif "remove_music_of_playlist" == command:
-                if "playlist_id" in content and "music_id" in content:
-                    complete = db_manager.remove_music_of_playlist(playlist_id=content["playlist_id"], music_id=content["music_id"])
-
-                    if complete:
-                        message = "Success"
-                    elif complete == False:
-                        message = "Connection not found"
-                    else:
-                        message = "Delete error"
-                    
-            else:
-                message = "Command not exists"
+                #Modelo de respuesta
+                res_data = ResData(command_received=command)
+                message = ""
                 response = {}
+
+                if "download" == command:
+                    async def download():
+                        res_data_thread = ResData(command_received="download")
+                        message_thread = ""
+                        response_thread = {}
+                        inst_downloader = Downloader()
+                        try:
+                            res_download = inst_downloader.descargar(link=content)        
+                        except:
+                            pass
+                        finally:
+                            inst_downloader.close()
+                        
+                        if res_download['success']:
+                            message_thread = res_download['message']
+                            response_thread = res_download['data']
+                        else:
+                            message_thread = res_download['message']
+                            response_thread = res_download['data']
+                        
+                        res_data_thread.message = message_thread
+                        res_data_thread.response = response_thread
+                        
+                        await websocket.send_json(res_data_thread.model_dump())   
+                                    
+                    def run_download():
+                        asyncio.run(download())
+                        # await download()
+                    thread_download = threading.Thread(target=run_download, daemon=True)
+                    thread_download.start()
+                    #command = ""
+                    res_data.command_received = ""
+                    
+                    
+                elif "get_musics" == command:
+                    if 'all' in content:
+                        response = db_manager.get_musics(all=True).get_models_dump()
+                    elif "author" in content:
+                        response = db_manager.get_musics(author=content["author"]).get_models_dump()
+                    elif "name" in content:
+                        response = db_manager.get_musics(name=content["name"]).get_models_dump()
+                    elif "id" in content:
+                        response = db_manager.get_musics(id=content["id"]).get_models_dump()
+                    
+                    if response:
+                        message = "Success"
+                    else:
+                        message = "Musics not found"
+                        
+                elif "delete_musics" == command:
+                    if "id_list" in content:
+                        check = db_manager.delete_musics(musics_id=content["id_list"])
+                            
+                    elif "all" in content:
+                        check = db_manager.delete_musics(all=True)
+                    
+                    if check:
+                        message = "Delete Success"
+                    else:
+                        message = "Delete Error"
                 
-            res_data.message = message
-            res_data.response = response    
-            
-            await websocket.send_json(res_data.model_dump())
+                elif "create_playlist" == command:
+                    if "name" in content:
+                        valid = db_manager.validate_new_playlist(name=content["name"])
+                        if valid == 0:
+                            response = {"id": db_manager.add_playlist(name=content["name"])}
+                        elif valid > 0:
+                            response = {"id": valid}
+                        else:
+                            message = "Failed validation"
+                    
+                    if response:
+                        if valid == 0:
+                            message = "Success"
+                        else:
+                            message = "Playlist already created"
+                    else:
+                        if message:
+                            message = f"Error creating playlist | {message}"
+                        else:
+                            message = "Error creating playlist"
+                            
+                elif "get_playlists" == command:
+                    if "all" in content:
+                        response = db_manager.get_playlists(all=True).get_models_dump()
+                    elif "id" in content:
+                        response = db_manager.get_playlists(id=content["id"]).get_models_dump()
+                    elif "name" in content:
+                        response = db_manager.get_playlists(name=content["name"]).get_models_dump()
+                        
+                    if response:
+                        message = "Success"
+                    else:
+                        message = "Playlists not found"
+                
+                elif "delete_playlist" == command:
+                    if "id" in content:
+                        complete = db_manager.delete_playlists(id=content["id"])
+                        if complete:
+                            message = "Success"
+                        elif complete == False:
+                            message = "Playlist not found"
+                        elif complete == None:
+                            message = "Delete error"
+                
+                elif "add_musics_to_playlist"  == command:
+                    if "musics_id" in content and "playlist_id" in content:
+                        complete = db_manager.add_musics_to_playlist(playlist_id=content["playlist_id"], musics_id=content["musics_id"])
+                    
+                        if complete:
+                            message = "Success"
+                            pls_updated = db_manager.get_musics_playlist(id=content["playlist_id"]).get_models_dump()
+                            response = {
+                                "id": content["playlist_id"],
+                                "pls_updated": pls_updated
+                            }
+                        elif complete == False:
+                            # message = "The music is already in the playlist"
+                            message = "Error adding music"
+                        else:
+                            message = "Error adding music"
+                
+                elif "get_musics_of_playlist" == command:
+                    if "id" in content:
+                        response = db_manager.get_musics_playlist(id=content["id"]).get_models_dump()
+                    
+                    if response:
+                        message = "Success"
+                    else:
+                        message = "Musics not found"
+                
+                elif "remove_music_of_playlist" == command:
+                    if "playlist_id" in content and "musics_id" in content:
+                        if content["playlist_id"] == 0:
+                            complete = db_manager.delete_musics(musics_id=content["musics_id"])
+                        else:
+                            complete = db_manager.remove_music_of_playlist(playlist_id=content["playlist_id"], musics_id=content["musics_id"])
+
+                        if complete:
+                            message = "Success"
+                            pls_updated = []
+                            if content["playlist_id"] != 0:
+                                pls_updated = db_manager.get_musics_playlist(id=content["playlist_id"]).get_models_dump()
+                            else:
+                                pls_updated = db_manager.get_musics(all=True).get_models_dump()
+                                
+                            response = {
+                                "id": content["playlist_id"],
+                                "pls_updated": pls_updated
+                            }
+                        elif complete == False:
+                            # message = "Connection not found"
+                            message = "Delete error"
+                        else:
+                            message = "Delete error"
+                
+                elif not command:
+                    pass
+                else:
+                    message = "Command not exists"
+                    response = {}
+                    
+                res_data.message = message
+                res_data.response = response    
+                
+                await websocket.send_json(res_data.model_dump())
+            except TimeoutError:
+                print("Tiempo de espera agotado")
+    except WebSocketDisconnect as e:
+        print(f"Error: {e}")
+    # finally:
+    #     await ws_Manager.remove_connection(host)
         
-    except Exception as e:
-        print(f"Cliente desconectado: {e}")
         
         
 if __name__ == "__main__":
