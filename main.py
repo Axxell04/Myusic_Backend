@@ -13,6 +13,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from asyncio import TimeoutError
 
 # from .modulos.descargas import Core as Downloader
@@ -56,6 +57,19 @@ db_manager = DB_Manager()
 
 app = FastAPI()
 
+origins = {
+    "http://localhost:5173",
+    "*"
+}
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
 webSocket_connection = None
 
 @app.get("/off")
@@ -91,6 +105,12 @@ def download(id: int):
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail="File not found")
     return {"message": "Registro no encontrado"}
+
+@app.get("/get_musics/")
+def get_musics():
+    db = DB_Manager()
+    musics = db.get_musics(all=True).get_models_dump()
+    return musics
 
 
 @app.websocket("/")
@@ -293,7 +313,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect as e:
         print(f"Error: {e}")
     # finally:
-    #     await ws_Manager.remove_connection(host)
+    #     await ws_Manager.remove_connection(host) 
         
         
         
