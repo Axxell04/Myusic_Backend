@@ -14,7 +14,7 @@
 </script>
 
 <button onclick={()=>selectMusic(music)}>
-    <div class="flex flex-col hover:bg-stone-100/10 p-2 border rounded-md {isSelected ? 'border-lime-400' : 'border-transparent'}">
+    <div class="flex flex-col hover:bg-stone-100/10 px-4 py-1.5 border rounded-full {isSelected ? 'border-lime-400' : 'border-transparent'}">
         <span class="line-clamp-1 text-start">
             {music.name}
         </span>
