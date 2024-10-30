@@ -8,16 +8,21 @@
         playerCurrentTime: PlayerTime
         playerTotalTime: PlayerTime
         playing: boolean
+        randomMode: boolean
         musicSelected: Music | undefined
         updatePlayerCurrentTime: (e: Event) => void
         play: () => void
         pause: () => void
         playNextMusic: () => void
         playPreviusMusic: () => void
+        toggleRandomMode: () => void
     }
 
-    let previusIsPressed = $state(false)
+    let {playerCurrentTime, playerTotalTime, playing, updatePlayerCurrentTime, play, pause, playNextMusic, playPreviusMusic, musicSelected, randomMode, toggleRandomMode}:Props = $props()
+
+    let previusIsPressed = $state(false);
     let nextIsPressed = $state(false);
+    let randomIsPressed = $state(false);
 
     function previusPressed () {
         previusIsPressed = true;
@@ -33,7 +38,14 @@
         }, 100)
     }
 
-    let {playerCurrentTime, playerTotalTime, playing, updatePlayerCurrentTime, play, pause, playNextMusic, playPreviusMusic, musicSelected}:Props = $props()
+    function randomPressed () {
+        toggleRandomMode();
+        randomIsPressed = true;
+        setTimeout(() => {
+            randomIsPressed = false;
+        }, 100)
+    }
+
 
 </script>
 
@@ -87,8 +99,16 @@
         </div>
     </section>
     <section class="">
-        <button>
-            <Icon icon="fa-solid:chevron-circle-up" class="text-lime-500 text-4xl" />
+        <button onclick={()=>{randomPressed()}}>
+            {#if !randomIsPressed}
+                <div in:scale>
+                    <Icon icon="fa-solid:random" class="{randomMode ? 'text-lime-500': 'text-lime-500/60'} text-4xl" />
+                </div>
+            {:else}    
+                <div class="opacity-0">
+                    <Icon icon="fa-solid:random" class=" text-4xl" />
+                </div>
+            {/if}
         </button>
     </section>
 </div>

@@ -2,21 +2,57 @@
 	import type { Music } from "$lib/interfaces/music.js";
 	import MusicsList from "$lib/sections/MusicsList.svelte";
 	import PlayerBar from "$lib/sections/PlayerBar.svelte";
+	import TopBar from "$lib/sections/TopBar.svelte";
 	import { onMount } from "svelte";
 
     // Info player
     let playerCurrentTime = $state({asNumber: 0, asString: '00:00'})
     let playerTotalTime = $state({asNumber: 0, asString: '00:00'})
     let playing = $state(false);
+    let randomMode = $state(false);
 
     let audioELement: HTMLAudioElement;
 
     // Musics
     let musics: Music[] = $state([])
-    let previusMusic: Music | undefined = $state()
-    let nextMusic: Music | undefined = $state();
+    let musicsNormalList: Music[] = $state([])
+    let musicsRandomList: Music[] = $state([])
     let musicSelected: Music | undefined = $state();
-    let musicURL = $derived(musicSelected ? `http://localhost:8000/download/${musicSelected.id}` : '')
+    let previusMusic: Music | undefined = $derived.by(() => {
+        if (musicSelected && musics) {
+            const indexPrev = musics.indexOf(musicSelected) - 1
+            
+            if (indexPrev < musics.length) {
+                return musics[indexPrev];
+            } 
+        }
+        return undefined
+    });
+    let nextMusic: Music | undefined = $derived.by(() => {
+        if (musicSelected && musics) {
+            const indexNext = musics.indexOf(musicSelected) + 1
+            
+            if (indexNext < musics.length) {
+                return musics[indexNext];
+            } else {
+                return musics[0];
+            }
+        }
+        return undefined
+    });
+    let musicURL = $derived(musicSelected ? `http://192.168.3.129:8000/download/${musicSelected.id}` : '')
+
+    // Randomizer musics
+    function randomizer (listMusic: Music[]) {
+        let finalList = listMusic.slice();
+        
+        for (let i = finalList.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [finalList[i], finalList[j]] = [finalList[j], finalList[i]];
+        }
+
+        return finalList
+    }
 
     // Player functions 
     function play () {
@@ -33,20 +69,6 @@
 
     function selectMusic (music: Music) {
         musicSelected = music;
-        const indexPrev = musics.indexOf(musicSelected) - 1
-        const indexNext = musics.indexOf(musicSelected) + 1
-
-        if (indexPrev >= 0) {
-            previusMusic = musics[indexPrev];
-        } else {
-            previusMusic = undefined;
-        }
-
-        if (indexNext < musics.length) {
-            nextMusic = musics[indexNext];
-        } else {
-            nextMusic = undefined;
-        }
     }
     
     function playPreviusMusic () {
@@ -59,6 +81,18 @@
         if (nextMusic) {
             selectMusic(nextMusic);
         }
+    }
+
+    function toggleRandomMode () {
+        randomMode = !randomMode;
+        
+        if (randomMode) {
+            musics = musicsRandomList.slice()
+        } else {
+            musics = musicsNormalList.slice()
+            musicsRandomList = randomizer(musicsRandomList);
+        }
+
     }
 
     function updatePlayerCurrentTime (e: Event) {
@@ -96,10 +130,12 @@
         }
     }
 
-    async function getMusics () {
-        const res = await fetch('http://localhost:8000/get_musics/')
+    async function getMusics (valueToSearch: string = '') {
+        const res = await fetch(`http://192.168.3.129:8000/get_musics/?value_search=${valueToSearch}`)
         const data: Music[] = await res.json();
         musics = data;
+        musicsNormalList = musics.slice();
+        musicsRandomList = randomizer(musics);
     }
 
     onMount(getMusics)
@@ -109,8 +145,9 @@
 <main class="flex flex-col h-dvh max-h-dvh w-full">
     <audio src={musicURL} class="hidden" bind:this={audioELement} controls autoplay ontimeupdate={e=>printCurrentTime(e)} onplay={()=>playing = true} onpause={()=>playing = false}>
     </audio>
+    <TopBar {getMusics} />
     <MusicsList {musics} {selectMusic} {musicSelected} />
     <section class="mt-auto">
-        <PlayerBar {playerCurrentTime} {playerTotalTime} {updatePlayerCurrentTime} {playing} {play} {pause} {playNextMusic} {playPreviusMusic} {musicSelected} />
+        <PlayerBar {playerCurrentTime} {playerTotalTime} {updatePlayerCurrentTime} {playing} {play} {pause} {playNextMusic} {playPreviusMusic} {musicSelected} {randomMode} {toggleRandomMode} />
     </section> 
 </main>

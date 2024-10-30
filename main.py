@@ -107,9 +107,17 @@ def download(id: int):
     return {"message": "Registro no encontrado"}
 
 @app.get("/get_musics/")
-def get_musics():
+def get_musics(value_search: str = ''):
     db = DB_Manager()
-    musics = db.get_musics(all=True).get_models_dump()
+    musics = []
+    if value_search:
+        res_author = db.get_musics(author=value_search).get_models_dump()
+        res_name = db.get_musics(name=value_search).get_models_dump() 
+        musics.extend(res_name)
+        musics.extend([music for music in res_author if music not in res_name])
+    else:
+        musics = db.get_musics(all=True).get_models_dump()
+
     return musics
 
 
