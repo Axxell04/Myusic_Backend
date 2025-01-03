@@ -42,14 +42,15 @@ class Core():
         # clip = VideoFileClip(vid_path)
         conversion_completa = False
         try:
-            ffmpeg_path = os.path.join(self.PATH_MAIN, 'ffmpeg', 'ffmpeg.exe')
+            ffmpeg_path = os.path.join(self.PATH_MAIN, 'ffmpeg', 'ffmpeg.exe')            
             stream = ffmpeg.input(vid_path)
             stream = ffmpeg.output(stream, music_path)
             ffmpeg.run(stream, cmd=ffmpeg_path, overwrite_output=True)
             
             conversion_completa = True
-        except:
-            print("|| Error en la conversión ||")
+        except Exception as e:
+            print(f"|| Error en la conversión ||")
+
             pass
 
         # clip.close()

@@ -13,6 +13,8 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from asyncio import TimeoutError
 
 # from .modulos.descargas import Core as Downloader
@@ -56,7 +58,23 @@ db_manager = DB_Manager()
 
 app = FastAPI()
 
+origins = {
+    "http://localhost:5173",
+    "*"
+}
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
+
 webSocket_connection = None
+
+app.mount("/_app", StaticFiles(directory="desktop-player/build/_app"), name="static")
+#app.mount("/assets", StaticFiles(directory="sveltekit_build/assets"), name="assets")
 
 @app.get("/off")
 async def off():
@@ -67,16 +85,7 @@ async def off():
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
-    return """
-    <html>
-    <head>
-    <title>Mi página web</title>
-    </head>
-    <body>
-    <h1>Hola mundo</h1>
-    </body>
-    </html>
-    """
+    return FileResponse('desktop-player/build/index.html')
 
 @app.get("/download/{id}")
 def download(id: int):
@@ -91,6 +100,29 @@ def download(id: int):
         except FileNotFoundError:
             raise HTTPException(status_code=404, detail="File not found")
     return {"message": "Registro no encontrado"}
+
+@app.get("/get_musics/")
+def get_musics(value_search: str = '', playlist_id: int = 0):
+    db = DB_Manager()
+    musics = []
+    if value_search:
+        res_author = db.get_musics(author=value_search).get_models_dump()
+        res_name = db.get_musics(name=value_search).get_models_dump() 
+        musics.extend(res_name)
+        musics.extend([music for music in res_author if music not in res_name])
+    elif playlist_id:
+        musics = db.get_musics_playlist(playlist_id).get_models_dump()
+    else:
+        musics = db.get_musics(all=True).get_models_dump()
+
+    return musics
+
+@app.get("/get_playlists/")
+def get_playlist():
+    db = DB_Manager()
+    playlists = db.get_playlists(all=True).get_models_dump()
+
+    return playlists
 
 
 @app.websocket("/")
@@ -293,7 +325,7 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect as e:
         print(f"Error: {e}")
     # finally:
-    #     await ws_Manager.remove_connection(host)
+    #     await ws_Manager.remove_connection(host) 
         
         
         

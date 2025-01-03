@@ -1,8 +1,9 @@
+
 import os
 import datetime
 # import threading
 # import pyperclip
-from pytube import YouTube, Playlist
+from pytubefix import YouTube, Playlist
 
 from modulos import conversor
 # from modulos import online
