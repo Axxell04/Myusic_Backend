@@ -1,17 +1,26 @@
 <script lang="ts">
 	import type { Music } from "$lib/interfaces/music.js";
+	import type { Playlist } from "$lib/interfaces/playlist.js";
 	import MusicsList from "$lib/sections/MusicsList.svelte";
 	import PlayerBar from "$lib/sections/PlayerBar.svelte";
+	import PlaylistList from "$lib/sections/PlaylistList.svelte";
 	import TopBar from "$lib/sections/TopBar.svelte";
 	import { onMount } from "svelte";
 
     // Info player
     let playerCurrentTime = $state({asNumber: 0, asString: '00:00'})
     let playerTotalTime = $state({asNumber: 0, asString: '00:00'})
+    let playerVolume = $state(0)
     let playing = $state(false);
     let randomMode = $state(false);
 
     let audioELement: HTMLAudioElement;
+
+    // Visibility Elements
+    let playlistIsVisible = $state(true);
+
+    // Playlists
+    let playlists: Playlist[] = $state([])
 
     // Musics
     let musics: Music[] = $state([])
@@ -40,7 +49,7 @@
         }
         return undefined
     });
-    let musicURL = $derived(musicSelected ? `http://192.168.3.129:8000/download/${musicSelected.id}` : '')
+    let musicURL = $derived(musicSelected ? ` ${window.location.origin}/download/${musicSelected.id}` : '')
 
     // Randomizer musics
     function randomizer (listMusic: Music[]) {
@@ -95,12 +104,22 @@
 
     }
 
+    //External controls funtions
+
     function updatePlayerCurrentTime (e: Event) {
         const target = e.target as HTMLInputElement;
         const value = parseInt(target.value);
 
         if (audioELement) {
             audioELement.currentTime = value;
+        }
+    }
+
+    function updatePlayerVolume (e: Event) {
+        const target = e.target as HTMLInputElement;
+        const value = parseFloat(target.value);
+        if (audioELement) {
+            audioELement.volume = value;
         }
     }
 
@@ -114,8 +133,10 @@
 
         return result
     }
+
+    //Capture AudioElement updates
     
-    function printCurrentTime (e: Event) {
+    function captureCurrentTime (e: Event) {
         const target = e.target as HTMLAudioElement;
         const currentTime = target.currentTime;
         const totalTime = target.duration;
@@ -130,24 +151,51 @@
         }
     }
 
-    async function getMusics (valueToSearch: string = '') {
-        const res = await fetch(`http://192.168.3.129:8000/get_musics/?value_search=${valueToSearch}`)
+    function captureVolume (e: Event) {
+        //console.log(e)
+        const target = e.target as HTMLAudioElement;
+        const volume = target.volume;
+        playerVolume = volume;
+    }
+
+    // Request functions
+    async function getMusics (valueToSearch: string = '', playlistId: number = 0) {
+        const res = await fetch(`${window.location.origin}/get_musics/?value_search=${valueToSearch}&playlist_id=${playlistId}`)
         const data: Music[] = await res.json();
         musics = data;
         musicsNormalList = musics.slice();
         musicsRandomList = randomizer(musics);
+        randomMode = false;
     }
 
-    onMount(getMusics)
+    async function getPlaylist () {
+        const res = await fetch(`${window.location.origin}/get_playlists/`)
+        const data: Playlist[] = await res.json();
+        playlists = [{id: 0, name: "Todas la canciones"}, ...data];
+    }
+
+    // Toggle visibility elements
+    function togglePlaylistIsVisible () {
+        playlistIsVisible = !playlistIsVisible;
+    }
+
+    $inspect(musics)
+    onMount(() => {
+        getMusics();
+        getPlaylist()
+    })
 
 </script>
 
-<main class="flex flex-col h-dvh max-h-dvh w-full">
-    <audio src={musicURL} class="hidden" bind:this={audioELement} controls autoplay ontimeupdate={e=>printCurrentTime(e)} onplay={()=>playing = true} onpause={()=>playing = false}>
+<main class="flex flex-col h-dvh max-h-dvh w-full overflow-hidden">
+    <audio src={musicURL} class="fixed hidden" bind:this={audioELement} controls autoplay onloadstart={e=>captureVolume(e)} onvolumechange={e=>captureVolume(e)} ontimeupdate={e=>captureCurrentTime(e)} onplay={()=>playing = true} onpause={()=>playing = false}>
     </audio>
-    <TopBar {getMusics} />
-    <MusicsList {musics} {selectMusic} {musicSelected} />
-    <section class="mt-auto">
-        <PlayerBar {playerCurrentTime} {playerTotalTime} {updatePlayerCurrentTime} {playing} {play} {pause} {playNextMusic} {playPreviusMusic} {musicSelected} {randomMode} {toggleRandomMode} />
+    <TopBar {getMusics} {togglePlaylistIsVisible} {playlistIsVisible} />
+    <section class="h-full overflow-auto flex flex-row">
+        <PlaylistList {playlistIsVisible} {getMusics} {playlists} />
+        <MusicsList {musics} {selectMusic} {musicSelected} />
+    </section>
+    <section class="relative mt-auto">
+        <PlayerBar {playerCurrentTime} {playerTotalTime} {playerVolume} {updatePlayerCurrentTime} {updatePlayerVolume} {playing} {play} {pause} {playNextMusic} {playPreviusMusic} {musicSelected} {randomMode} {toggleRandomMode} />
     </section> 
 </main>

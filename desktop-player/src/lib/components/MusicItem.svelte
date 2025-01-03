@@ -9,7 +9,7 @@
 
     let {music, musicSelected, selectMusic}: Props = $props()
 
-    let isSelected = $derived(music === musicSelected);
+    let isSelected = $derived(music.id === musicSelected?.id);
 
 </script>
 
