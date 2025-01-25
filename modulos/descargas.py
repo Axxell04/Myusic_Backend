@@ -15,6 +15,7 @@ class Core():
     def __init__(self) -> None:
         self.PATH_MUSIC = 'music'
         self.PATH_MP4 = os.path.join(self.PATH_MUSIC, 'mp4')
+        self.PATH_PLAYLISTS = os.path.join(self.PATH_MUSIC, 'playlist')
         self.conversor = conversor.Core()
         self.db_manager = DB_Manager()
 
@@ -49,12 +50,19 @@ class Core():
                     limit = 5
                     cont = 0
                     descarga_completa = False
+                    music_path = ""
                     while not descarga_completa and cont < limit:
                         try:
                             print(f"-- Titulo: {title} --")
-                            vid_path = yt.streams.get_lowest_resolution().download(self.PATH_MP4)
-                            print(f"PATH: {vid_path}")
-                            print(f'FILE NAME: {os.path.basename(vid_path)}')
+                            target_dir = os.path.join(self.PATH_PLAYLISTS, author)
+                            caracteres_prohibidos = ['\\','/',':','*','?','"','<','>','|']
+                            for caracter in caracteres_prohibidos:
+                                if caracter in title:
+                                    title = title.replace(caracter, '')
+                            # vid_path = yt.streams.get_lowest_resolution().download(self.PATH_MP4)
+                            music_path = yt.streams.get_audio_only().download(target_dir, f"{title}.mp3")
+                            # print(f"PATH: {vid_path}")
+                            # print(f'FILE NAME: {os.path.basename(vid_path)}')
                             descarga_completa = True
                             print('-- Descarga Completa --')
                         except Exception as e:
@@ -62,13 +70,13 @@ class Core():
                             print(e)
                             
                         cont += 1
-                    music_path, conversion_completa = self.conversor.convertir(vid_path=vid_path, playlist_name=author)
+                    # music_path, conversion_completa = self.conversor.convertir(vid_path=vid_path, playlist_name=author)
                     print(music_path)
 
-                    if conversion_completa:
-                        print("-- Conversión completa --")
-                    else:
-                        print("|| Error en la conversión ||")
+                    # if conversion_completa:
+                    #     print("-- Conversión completa --")
+                    # else:
+                    #     print("|| Error en la conversión ||")
                     
                     music_data = {
                         "name": yt.title,
@@ -79,11 +87,16 @@ class Core():
                     
                     print(music_data)
                     
-                    data = self.db_manager.add_music(name=music_data['name'], author=music_data['author'], duration=music_data['duration'], path=music_data['path'])
+                    if music_data['name'] and music_data['author'] and music_data['duration'] and music_data['path']:
+                        data = self.db_manager.add_music(name=music_data['name'], author=music_data['author'], duration=music_data['duration'], path=music_data['path'])
+                        res['success'] = True
+                        res['message'] = "Success"
+                        res['data'] = data.model_dump()
+                    else:
+                        res['success'] = False
+                        res['message'] = "Download error"
+
                     
-                    res['success'] = True
-                    res['message'] = "Success"
-                    res['data'] = data.model_dump()
                 
                 else:
                     res['success'] = False
