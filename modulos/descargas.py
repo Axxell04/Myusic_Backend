@@ -26,7 +26,7 @@ class Core():
             os.mkdir(self.PATH_MUSIC)
         if not os.path.exists(self.PATH_MP4):
             os.mkdir(self.PATH_MP4)
-        print(2)
+        # print(2)
         
         res = {
             "success": False,
@@ -37,14 +37,14 @@ class Core():
         #Si es una canción individual
         if not 'playlist' in link:
             try:
-                print(3)
-                yt = YouTube(link)
+                # print(3)
+                yt = YouTube(link, 'WEB')
                 
                 author = yt.author
                 title = yt.title
                 
                 music_id = self.db_manager.validate_new_music(name=title, author=author)
-                
+                #print(4)
                 if music_id == 0:
                     limit = 5
                     cont = 0
@@ -92,8 +92,8 @@ class Core():
                     else:
                         res['message'] = "Failed validation"
                 
-            except:
-                print('|| Error al descargar la canción ||')
+            except Exception as e:
+                print(f'|| Error al descargar la canción ||')
                 res['success'] = False
                 res['message'] = "Download failed"
 
