@@ -1,9 +1,15 @@
 <script lang="ts">
+	import FuncWebSocket from "$lib/functionalities/FuncWebSocket.svelte";
+    import type { MessageRes } from "$lib/interfaces/messageWS.js";
 	import type { Music } from "$lib/interfaces/music.js";
 	import type { Playlist } from "$lib/interfaces/playlist.js";
+	import ManagerMenu from "$lib/sections/ManagerMenu.svelte";
+	import ModalDeletePls from "$lib/sections/Modals/ModalDeletePls.svelte";
+	import ModalNewPls from "$lib/sections/Modals/ModalNewPls.svelte";
 	import MusicsList from "$lib/sections/MusicsList.svelte";
 	import PlayerBar from "$lib/sections/PlayerBar.svelte";
 	import PlaylistList from "$lib/sections/PlaylistList.svelte";
+	import ToastMessage from "$lib/sections/ToastMessage.svelte";
 	import TopBar from "$lib/sections/TopBar.svelte";
 	import { onMount } from "svelte";
 
@@ -18,9 +24,13 @@
 
     // Visibility Elements
     let playlistIsVisible = $state(true);
+    let managerMenuIsVisible = $state(false);
+    let modalNewPlsIsVisible = $state(false);
+    let modalDeletePlsIsVisible = $state(false);
 
     // Playlists
     let playlists: Playlist[] = $state([])
+    let playlistSelected: Playlist | undefined = $state()
 
     // Musics
     let musics: Music[] = $state([])
@@ -49,7 +59,7 @@
         }
         return undefined
     });
-    let musicURL = $derived(musicSelected ? ` ${window.location.origin}/download/${musicSelected.id}` : '')
+    let musicURL = $derived(musicSelected ? `http://${window.location.hostname}:8000/download/${musicSelected.id}` : '')
 
     // Randomizer musics
     function randomizer (listMusic: Music[]) {
@@ -159,19 +169,30 @@
     }
 
     // Request functions
-    async function getMusics (valueToSearch: string = '', playlistId: number = 0) {
-        const res = await fetch(`${window.location.origin}/get_musics/?value_search=${valueToSearch}&playlist_id=${playlistId}`)
+    async function getMusics (valueToSearch: string = '', playlist: Playlist = {id: 0, name: ""}) {
+        const res = await fetch(`http://${window.location.hostname}:8000/get_musics/?value_search=${valueToSearch}&playlist_id=${playlist.id}`)
         const data: Music[] = await res.json();
         musics = data;
         musicsNormalList = musics.slice();
         musicsRandomList = randomizer(musics);
         randomMode = false;
+        if (playlist.id && playlist.name) {
+            playlistSelected = playlist;
+        } else if (playlist.name === "Todas las canciones") {
+            playlistSelected = {id: 0, name: playlist.name};
+        } else {
+            playlistSelected = undefined;
+        }
     }
 
-    async function getPlaylist () {
-        const res = await fetch(`${window.location.origin}/get_playlists/`)
+    async function getPlaylists (target?: Playlist[]) {
+        const res = await fetch(`http://${window.location.hostname}:8000/get_playlists/`)
         const data: Playlist[] = await res.json();
-        playlists = [{id: 0, name: "Todas la canciones"}, ...data];
+        if (typeof target !== "undefined") {
+            return data
+        } else {
+            playlists = [{id: 0, name: "Todas las canciones"}, ...data];
+        }
     }
 
     // Toggle visibility elements
@@ -179,23 +200,84 @@
         playlistIsVisible = !playlistIsVisible;
     }
 
-    $inspect(musics)
+    function toggleManagerMenuIsVisible () {
+        managerMenuIsVisible = !managerMenuIsVisible;
+    }
+
+    function toggleModalNewPlsIsVisible (visible?: boolean) {
+        if (typeof visible !== "undefined") {
+            modalNewPlsIsVisible = visible;
+        } else {
+            modalNewPlsIsVisible = !modalNewPlsIsVisible;
+        }
+    }
+
+    function toggleModalDeletePlsIsVisible (visible?: boolean) {
+        if (typeof visible !== "undefined") {
+            modalDeletePlsIsVisible = visible;
+        } else {
+            modalDeletePlsIsVisible = !modalDeletePlsIsVisible;
+        }
+    }
+
+    // WEBSOCKETS
+
+    let WS: WebSocket | undefined = $state();
+    let message = $state("");
+
+    function setToastMessage (m: string) {
+        message = m;
+    }
+
+    function initWS () {
+        WS = new WebSocket(`ws://${window.location.hostname}:8000`);
+    }
+
+    function sendMessage (command: string, content: object | string) {
+        if (WS) {
+            if (WS.OPEN) {
+                WS.send(JSON.stringify({
+                    command: command,
+                    content: content
+                }))
+            }
+        }
+    }
+    
+    $effect(() => {
+        if (message) {
+            setTimeout(() => {
+                message = "";
+            }, 4000)
+        }
+    })
+
+    // $inspect(modalNewPlsIsVisible)
     onMount(() => {
-        getMusics();
-        getPlaylist()
+        getMusics('', {id: 0, name: "Todas las canciones"});
+        getPlaylists();
+        initWS();
     })
 
 </script>
 
 <main class="flex flex-col h-dvh max-h-dvh w-full overflow-hidden">
+    <FuncWebSocket {getPlaylists} {WS} {setToastMessage} {toggleModalNewPlsIsVisible} {toggleModalDeletePlsIsVisible} />
     <audio src={musicURL} class="fixed hidden" bind:this={audioELement} controls autoplay onloadstart={e=>captureVolume(e)} onvolumechange={e=>captureVolume(e)} ontimeupdate={e=>captureCurrentTime(e)} onplay={()=>playing = true} onpause={()=>playing = false}>
     </audio>
-    <TopBar {getMusics} {togglePlaylistIsVisible} {playlistIsVisible} />
+    <ToastMessage {message} />
+    <TopBar {getMusics} {togglePlaylistIsVisible} {playlistIsVisible} {toggleManagerMenuIsVisible} {managerMenuIsVisible} />
+    <ManagerMenu {managerMenuIsVisible} {WS} {sendMessage} />
     <section class="h-full overflow-auto flex flex-row">
-        <PlaylistList {playlistIsVisible} {getMusics} {playlists} />
+        <PlaylistList {playlistIsVisible} {getMusics} {playlists} {WS} {playlistSelected} {toggleModalNewPlsIsVisible} {toggleModalDeletePlsIsVisible} />
         <MusicsList {musics} {selectMusic} {musicSelected} />
     </section>
     <section class="relative mt-auto">
         <PlayerBar {playerCurrentTime} {playerTotalTime} {playerVolume} {updatePlayerCurrentTime} {updatePlayerVolume} {playing} {play} {pause} {playNextMusic} {playPreviusMusic} {musicSelected} {randomMode} {toggleRandomMode} />
     </section> 
+
+    <ModalNewPls {modalNewPlsIsVisible} {toggleModalNewPlsIsVisible} {sendMessage} />
+    {#if modalDeletePlsIsVisible}
+    <ModalDeletePls {modalDeletePlsIsVisible} {toggleModalDeletePlsIsVisible} {sendMessage} {getPlaylists} />
+    {/if}
 </main>
