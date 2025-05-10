@@ -357,7 +357,7 @@ class DB_Manager():
                         complete = True
                     except:
                         print("No se logró asociar la canción a la playlist")
-                        print(e)
+                        #print(e)
                         # complete = None
                 
         return complete

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { MessageRes } from "$lib/interfaces/messageWS.js";
+	import type { Music } from "$lib/interfaces/music.js";
 	import type { Playlist } from "$lib/interfaces/playlist.js";
 	import { onMount } from "svelte";
 
@@ -8,10 +9,13 @@
         WS?: WebSocket
         toggleModalNewPlsIsVisible: (visible?: boolean) => void
         toggleModalDeletePlsIsVisible: (visible?: boolean) => void
-        getPlaylists: (target?: Playlist[]) => Promise<Playlist[] | undefined>
+        toggleModalAddMusicIsVisible: (visible?: boolean) => void
+        toggleModalRemoveMusicIsVisible: (visible?: boolean) => void
+        getPlaylists: (returning?: boolean) => Promise<Playlist[] | undefined>
+        getMusics: (valueToSearch?: string, playlist?: Playlist, returning?: boolean) => Promise<Music[] | undefined>
     }
 
-    let { setToastMessage, WS, toggleModalNewPlsIsVisible, getPlaylists, toggleModalDeletePlsIsVisible }: Props = $props();
+    let { setToastMessage, WS, toggleModalNewPlsIsVisible, getPlaylists, toggleModalDeletePlsIsVisible, toggleModalAddMusicIsVisible, toggleModalRemoveMusicIsVisible, getMusics }: Props = $props();
     
     
     function setWSEvents (ws: WebSocket) {
@@ -28,6 +32,7 @@
             if (data.command_received === "download") {
                 // message = data.message;
                 if (data.message.toLowerCase() === "success") {
+                    getPlaylists();
                     setToastMessage("Descarga realizada");
                 }
             } else if (data.command_received === "create_playlist") {
@@ -37,6 +42,22 @@
             } else if (data.command_received === "delete_playlist") {
                 toggleModalDeletePlsIsVisible(false);
                 getPlaylists();
+                setToastMessage(data.message);
+            } else if (data.command_received === "add_musics_to_playlist") {
+                toggleModalAddMusicIsVisible(false);
+                if (data.response) {
+                    if ("id" in data.response) {
+                        getMusics('', {id: data.response.id as number, name: ""});
+                    }
+                }
+                setToastMessage(data.message);
+            } else if (data.command_received === "remove_music_of_playlist") {
+                toggleModalRemoveMusicIsVisible(false);
+                if (data.response) {
+                    if ("id" in data.response) {
+                        getMusics('', {id: data.response.id as number, name: ""});
+                    }
+                }
                 setToastMessage(data.message);
             }
         }

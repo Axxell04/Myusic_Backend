@@ -16,11 +16,18 @@ class Core():
         self.PATH_MUSIC = 'music'
         self.PATH_MP4 = os.path.join(self.PATH_MUSIC, 'mp4')
         self.PATH_PLAYLISTS = os.path.join(self.PATH_MUSIC, 'playlist')
+        self.CARACTERES_PROHIBIDOS = ['\\','/',':','*','?','"','<','>','|']
         self.conversor = conversor.Core()
         self.db_manager = DB_Manager()
 
     def close(self):
         self.db_manager.close()
+
+    def validate_string(self, input='', filters=[]):
+        for filter in filters:
+            if filter in input:
+                input = input.replace(filter, '')
+        return input
 
     def descargar(self, link='', music_name='') -> dict | None:
         if not os.path.exists(self.PATH_MUSIC):
@@ -41,7 +48,7 @@ class Core():
                 # print(3)
                 yt = YouTube(link, 'WEB')
                 
-                author = yt.author
+                author = yt.author.replace(' ','')
                 title = yt.title
                 
                 music_id = self.db_manager.validate_new_music(name=title, author=author)
@@ -54,11 +61,13 @@ class Core():
                     while not descarga_completa and cont < limit:
                         try:
                             print(f"-- Titulo: {title} --")
+                            author = self.validate_string(author, self.CARACTERES_PROHIBIDOS)
                             target_dir = os.path.join(self.PATH_PLAYLISTS, author)
-                            caracteres_prohibidos = ['\\','/',':','*','?','"','<','>','|']
-                            for caracter in caracteres_prohibidos:
-                                if caracter in title:
-                                    title = title.replace(caracter, '')
+                            # caracteres_prohibidos = ['\\','/',':','*','?','"','<','>','|']
+                            # for caracter in caracteres_prohibidos:
+                            #     if caracter in title:
+                            #         title = title.replace(caracter, '')
+                            title = self.validate_string(title, self.CARACTERES_PROHIBIDOS)
                             # vid_path = yt.streams.get_lowest_resolution().download(self.PATH_MP4)
                             music_path = yt.streams.get_audio_only().download(target_dir, f"{title}.mp3")
                             # print(f"PATH: {vid_path}")
@@ -116,10 +125,10 @@ class Core():
         #Si es una playlist
         else:
             try:
-                if not os.path.exists(f"{self.PATH_MP4}/newpls/"):
-                    os.mkdir(f"{self.PATH_MP4}/newpls/")
+                # if not os.path.exists(f"{self.PATH_MP4}/newpls/"):
+                #     os.mkdir(f"{self.PATH_MP4}/newpls/")
                 
-                playlist = Playlist(link)
+                playlist = Playlist(link, 'WEB')
                 playlist_title = playlist.title
                 
                 #Comprobar si la playlist ya existe
@@ -140,7 +149,7 @@ class Core():
 
                     try:
                         for video in playlist:
-                            yt = YouTube(video)
+                            yt = YouTube(video, 'WEB')
                             
                             music_id = self.db_manager.validate_new_music(name=yt.title, author=yt.author)
                             
@@ -153,8 +162,11 @@ class Core():
                                 while not descarga_completa and cont < limit:
                                     try:
                                         print(f"-- Titulo: {yt.title} --")
-                                        
-                                        vid_path = yt.streams.get_lowest_resolution().download(f"{self.PATH_MP4}/newpls/")
+                                        author = self.validate_string(author, self.CARACTERES_PROHIBIDOS)
+                                        title = self.validate_string(yt.title, self.CARACTERES_PROHIBIDOS)
+                                        target_dir = os.path.join(self.PATH_PLAYLISTS, author)
+                                        # vid_path = yt.streams.get_lowest_resolution().download(f"{self.PATH_MP4}/newpls/")
+                                        music_path = yt.streams.get_audio_only().download(target_dir, f"{title}.mp3")
 
                                         # vid_path = yt.streams.get_lowest_resolution().
                                         descarga_completa = True
@@ -164,29 +176,23 @@ class Core():
                                         print(e)
                                     cont += 1
 
-                                music_path, conversion_completa = self.conversor.convertir(vid_path=vid_path, playlist_name=author)
-
-                                if conversion_completa:
-                                    print(f"PATH: {music_path} | Conversión completa")
-                                    music_data = {
-                                        "name": yt.title,
-                                        "author": yt.author,
-                                        "duration": f"0{str(datetime.timedelta(seconds=yt.length))}",
-                                        "path": music_path
-                                    }
-                                    # print(music_data)
-                                    
-                                    #Añadiendo cada canción a la tabla musics
-                                    music = self.db_manager.add_music(name=music_data['name'], author=music_data['author'], duration=music_data['duration'], path=music_data['path'])
-                                    musics_data.append(music.model_dump())
-                                    
-                                    #Comprobar si se logró crear la nueva playlist
-                                    if playlist_id:
-                                        #Asociar cada canción a la nueva playlist
-                                        self.db_manager.add_musics_to_playlist(playlist_id, [music.id])
-                                    
-                                else:
-                                    print(f"PATH: {music_path} | Error de conversión")
+                                # music_path, conversion_completa = self.conversor.convertir(vid_path=vid_path, playlist_name=author)
+                                music_data = {
+                                    "name": yt.title,
+                                    "author": yt.author,
+                                    "duration": f"0{str(datetime.timedelta(seconds=yt.length))}",
+                                    "path": music_path
+                                }
+                                # print(music_data)
+                                
+                                #Añadiendo cada canción a la tabla musics
+                                music = self.db_manager.add_music(name=music_data['name'], author=music_data['author'], duration=music_data['duration'], path=music_data['path'])
+                                musics_data.append(music.model_dump())
+                                
+                                #Comprobar si se logró crear la nueva playlist
+                                if playlist_id:
+                                    #Asociar cada canción a la nueva playlist
+                                    self.db_manager.add_musics_to_playlist(playlist_id, [music.id])
 
                             else: #La canción ya está registrada o no se puedo validar su existencia
                                 if type(music_id) == int: #Si music_id es de tipo INT significa que la canción ya está registrada

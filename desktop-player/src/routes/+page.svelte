@@ -4,8 +4,10 @@
 	import type { Music } from "$lib/interfaces/music.js";
 	import type { Playlist } from "$lib/interfaces/playlist.js";
 	import ManagerMenu from "$lib/sections/ManagerMenu.svelte";
+	import ModalAddMusic from "$lib/sections/Modals/ModalAddMusic.svelte";
 	import ModalDeletePls from "$lib/sections/Modals/ModalDeletePls.svelte";
 	import ModalNewPls from "$lib/sections/Modals/ModalNewPls.svelte";
+	import ModalRemoveMusic from "$lib/sections/Modals/ModalRemoveMusic.svelte";
 	import MusicsList from "$lib/sections/MusicsList.svelte";
 	import PlayerBar from "$lib/sections/PlayerBar.svelte";
 	import PlaylistList from "$lib/sections/PlaylistList.svelte";
@@ -27,6 +29,8 @@
     let managerMenuIsVisible = $state(false);
     let modalNewPlsIsVisible = $state(false);
     let modalDeletePlsIsVisible = $state(false);
+    let modalAddMusicIsVisible = $state(false);
+    let modalRemoveMusicIsVisible = $state(false);
 
     // Playlists
     let playlists: Playlist[] = $state([])
@@ -169,14 +173,18 @@
     }
 
     // Request functions
-    async function getMusics (valueToSearch: string = '', playlist: Playlist = {id: 0, name: ""}) {
+    async function getMusics (valueToSearch: string = '', playlist: Playlist = {id: 0, name: ""}, returning?: boolean ) {
         const res = await fetch(`http://${window.location.hostname}:8000/get_musics/?value_search=${valueToSearch}&playlist_id=${playlist.id}`)
         const data: Music[] = await res.json();
-        musics = data;
+        if (returning) {
+            return data.reverse();
+        }
+
+        musics = data.reverse();
         musicsNormalList = musics.slice();
         musicsRandomList = randomizer(musics);
         randomMode = false;
-        if (playlist.id && playlist.name) {
+        if (playlist.id) {
             playlistSelected = playlist;
         } else if (playlist.name === "Todas las canciones") {
             playlistSelected = {id: 0, name: playlist.name};
@@ -185,14 +193,15 @@
         }
     }
 
-    async function getPlaylists (target?: Playlist[]) {
+    async function getPlaylists (returning?: boolean) {
         const res = await fetch(`http://${window.location.hostname}:8000/get_playlists/`)
         const data: Playlist[] = await res.json();
-        if (typeof target !== "undefined") {
-            return data
-        } else {
-            playlists = [{id: 0, name: "Todas las canciones"}, ...data];
+        if (returning) {
+            return data.reverse();
         }
+
+        playlists = [{id: 0, name: "Todas las canciones"}, ...data.reverse()];
+
     }
 
     // Toggle visibility elements
@@ -217,6 +226,22 @@
             modalDeletePlsIsVisible = visible;
         } else {
             modalDeletePlsIsVisible = !modalDeletePlsIsVisible;
+        }
+    }
+
+    function toggleModalAddMusicIsVisible (visible?: boolean) {
+        if (typeof visible !== "undefined") {
+            modalAddMusicIsVisible = visible
+        } else {
+            modalAddMusicIsVisible = !modalAddMusicIsVisible;
+        }
+    }
+
+    function toggleModalRemoveMusicIsVisible (visible?: boolean) {
+        if (typeof visible !== "undefined") {
+            modalRemoveMusicIsVisible = visible;
+        } else {
+            modalRemoveMusicIsVisible = !modalRemoveMusicIsVisible;
         }
     }
 
@@ -262,12 +287,12 @@
 </script>
 
 <main class="flex flex-col h-dvh max-h-dvh w-full overflow-hidden">
-    <FuncWebSocket {getPlaylists} {WS} {setToastMessage} {toggleModalNewPlsIsVisible} {toggleModalDeletePlsIsVisible} />
+    <FuncWebSocket {getPlaylists} {getMusics} {WS} {setToastMessage} {toggleModalNewPlsIsVisible} {toggleModalDeletePlsIsVisible} {toggleModalAddMusicIsVisible} {toggleModalRemoveMusicIsVisible} />
     <audio src={musicURL} class="fixed hidden" bind:this={audioELement} controls autoplay onloadstart={e=>captureVolume(e)} onvolumechange={e=>captureVolume(e)} ontimeupdate={e=>captureCurrentTime(e)} onplay={()=>playing = true} onpause={()=>playing = false}>
     </audio>
     <ToastMessage {message} />
     <TopBar {getMusics} {togglePlaylistIsVisible} {playlistIsVisible} {toggleManagerMenuIsVisible} {managerMenuIsVisible} />
-    <ManagerMenu {managerMenuIsVisible} {WS} {sendMessage} />
+    <ManagerMenu {managerMenuIsVisible} {WS} {sendMessage} {toggleModalAddMusicIsVisible} {toggleModalRemoveMusicIsVisible} {playlistSelected} />
     <section class="h-full overflow-auto flex flex-row">
         <PlaylistList {playlistIsVisible} {getMusics} {playlists} {WS} {playlistSelected} {toggleModalNewPlsIsVisible} {toggleModalDeletePlsIsVisible} />
         <MusicsList {musics} {selectMusic} {musicSelected} />
@@ -279,5 +304,11 @@
     <ModalNewPls {modalNewPlsIsVisible} {toggleModalNewPlsIsVisible} {sendMessage} />
     {#if modalDeletePlsIsVisible}
     <ModalDeletePls {modalDeletePlsIsVisible} {toggleModalDeletePlsIsVisible} {sendMessage} {getPlaylists} />
+    {/if}
+    {#if modalAddMusicIsVisible}
+    <ModalAddMusic {modalAddMusicIsVisible} {toggleModalAddMusicIsVisible} {sendMessage} {getMusics} musicsOfPls={musics} {playlistSelected} />
+    {/if}
+    {#if modalRemoveMusicIsVisible}
+    <ModalRemoveMusic {modalRemoveMusicIsVisible} {toggleModalRemoveMusicIsVisible} {sendMessage} {getMusics} musicsOfPls={musics} {playlistSelected} />
     {/if}
 </main>

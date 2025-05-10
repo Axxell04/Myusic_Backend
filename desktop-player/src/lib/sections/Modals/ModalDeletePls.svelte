@@ -7,7 +7,7 @@
         modalDeletePlsIsVisible: boolean
         toggleModalDeletePlsIsVisible: (visible?: boolean)=>void
         sendMessage: (command: string, content: object | string) => void
-        getPlaylists: (target?: Playlist[]) => Promise<Playlist[] | undefined>
+        getPlaylists: (returning?: boolean) => Promise<Playlist[] | undefined>
     }
 
     let { modalDeletePlsIsVisible, toggleModalDeletePlsIsVisible, sendMessage, getPlaylists }: Props = $props()
@@ -28,7 +28,7 @@
     }
 
     async function initFunction () {
-        const data = await getPlaylists(listPls);
+        const data = await getPlaylists(true);
         if (typeof data !== "undefined") {
             listPls = data;
         }

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import Icon from "@iconify/svelte";
+	import type { Playlist } from "$lib/interfaces/playlist.js";
+import Icon from "@iconify/svelte";
 	import { fade, fly, scale, slide } from "svelte/transition";
 
 
@@ -7,9 +8,12 @@
         managerMenuIsVisible: boolean
         WS?: WebSocket
         sendMessage: (command: string, content: object | string) => void
+        toggleModalAddMusicIsVisible: (visible?: boolean) => void
+        toggleModalRemoveMusicIsVisible: (visible?: boolean) => void
+        playlistSelected: Playlist | undefined
     }
 
-    let { managerMenuIsVisible, WS, sendMessage }: Props = $props()
+    let { managerMenuIsVisible, WS, sendMessage, toggleModalAddMusicIsVisible, playlistSelected, toggleModalRemoveMusicIsVisible }: Props = $props()
 
     let urlToDownload = $state("");
     let alertsInput = $state({
@@ -51,20 +55,26 @@
 
     </div>
 
-    <div class="flex flex-row gap-2 text-zinc-900 place-content-center mx-auto">
-        <button class="flex flex-row gap-1 bg-lime-500 hover:bg-lime-400 rounded-xl px-2 py-1 place-items-center">
+    {#if playlistSelected?.id !== 0 }
+    <div transition:fade class="flex flex-row gap-2 text-zinc-900 place-content-center mx-auto">
+        <button class="flex flex-row gap-1 bg-lime-500 hover:bg-lime-400 rounded-xl px-2 py-1 place-items-center" 
+        onclick={() => toggleModalAddMusicIsVisible()}
+        >
             <Icon icon="fa-solid:plus" />
             <span>
                 Canción
             </span>
         </button>
-        <button class="flex flex-row gap-1 bg-red-400 hover:bg-red-300 rounded-xl px-2 py-1 place-items-center">
+        <button class="flex flex-row gap-1 bg-red-400 hover:bg-red-300 rounded-xl px-2 py-1 place-items-center"
+        onclick={() => toggleModalRemoveMusicIsVisible()}
+        >
             <Icon icon="fa-solid:trash-alt" />
             <span>
                 Canción
             </span>
         </button>
     </div>
+    {/if}
 
 </div>
 {/if}
