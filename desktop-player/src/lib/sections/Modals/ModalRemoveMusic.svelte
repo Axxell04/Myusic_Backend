@@ -25,12 +25,20 @@
 
     function removeMusics () {
         if (selectedMusics) {
-            sendMessage('remove_music_of_playlist', {
-                playlist_id: playlistSelected?.id,
-                musics_id: selectedMusics.map((m) => {
-                    return m.id
+            if (playlistSelected?.id === 0) {
+                sendMessage('delete_musics', {
+                    id_list: selectedMusics.map((m) => {
+                        return m.id
+                    })
                 })
-            })
+            } else {
+                sendMessage('remove_music_of_playlist', {
+                    playlist_id: playlistSelected?.id,
+                    musics_id: selectedMusics.map((m) => {
+                        return m.id
+                    })
+                })
+            }
             // sendMessage("delete_playlist", {id: selectedMusic.id});
             // selectedMusic = undefined;
         }
@@ -77,7 +85,11 @@
     <div role="button" tabindex="0" onkeydown={()=>{}} class="flex flex-col max-h-full max-w-96 cursor-default border border-lime-600 p-3 bg-zinc-900 rounded-xl gap-4" onclick={(e)=>{e.stopPropagation()}}>
         <div class="flex flex-col flex-grow gap-4 place-items-center overflow-y-auto">
             <h3 class="font-semibold text-lg">
+                {#if playlistSelected?.id === 0}
+                Eliminar canción
+                {:else}
                 Remover canción
+                {/if}
             </h3>            
 
             <div class="flex flex-col overflow-y-auto">
@@ -96,7 +108,11 @@
             <button class="border border-lime-500 hover:bg-lime-400 hover:text-zinc-900 px-2 py-1 rounded-md" 
             onclick={removeMusics}
             >
+                {#if playlistSelected?.id === 0}
+                Eliminar
+                {:else}
                 Remover
+                {/if}
             </button>
             <button class="border border-red-500 hover:bg-red-400 hover:text-zinc-900 px-2 py-1 rounded-md" onclick={()=>toggleModalRemoveMusicIsVisible()}>
                 Cerrar

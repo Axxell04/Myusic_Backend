@@ -33,6 +33,7 @@
                 // message = data.message;
                 if (data.message.toLowerCase() === "success") {
                     getPlaylists();
+                    getMusics('', {id: 0, name: "Todas las canciones"});
                     setToastMessage("Descarga realizada");
                 }
             } else if (data.command_received === "create_playlist") {
@@ -57,6 +58,12 @@
                     if ("id" in data.response) {
                         getMusics('', {id: data.response.id as number, name: ""});
                     }
+                }
+                setToastMessage(data.message);
+            } else if (data.command_received === "delete_musics") {
+                toggleModalRemoveMusicIsVisible(false);
+                if (data.response) {
+                    getMusics('', {id: 0, name: "Todas las canciones"});
                 }
                 setToastMessage(data.message);
             }

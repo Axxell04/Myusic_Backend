@@ -56,7 +56,7 @@ import Icon from "@iconify/svelte";
     </div>
 
     {#if playlistSelected?.id !== 0 }
-    <div transition:fade class="flex flex-row gap-2 text-zinc-900 place-content-center mx-auto">
+    <div in:fade class="flex flex-row gap-2 text-zinc-900 place-content-center mx-auto">
         <button class="flex flex-row gap-1 bg-lime-500 hover:bg-lime-400 rounded-xl px-2 py-1 place-items-center" 
         onclick={() => toggleModalAddMusicIsVisible()}
         >
@@ -65,6 +65,17 @@ import Icon from "@iconify/svelte";
                 Canción
             </span>
         </button>
+        <button class="flex flex-row gap-1 bg-red-400 hover:bg-red-300 rounded-xl px-2 py-1 place-items-center"
+        onclick={() => toggleModalRemoveMusicIsVisible()}
+        >
+            <Icon icon="fa-solid:trash-alt" />
+            <span>
+                Canción
+            </span>
+        </button>
+    </div>
+    {:else}
+    <div in:fade class="flex flex-row gap-2 text-zinc-900 place-content-center mx-auto">
         <button class="flex flex-row gap-1 bg-red-400 hover:bg-red-300 rounded-xl px-2 py-1 place-items-center"
         onclick={() => toggleModalRemoveMusicIsVisible()}
         >
