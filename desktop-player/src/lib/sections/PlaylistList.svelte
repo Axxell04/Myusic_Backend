@@ -20,7 +20,7 @@
 </script>
 
 {#if playlistIsVisible}
-<div transition:slide={{axis: "x", }} class="flex flex-col gap-1 p-2 bg-zinc-900/80 backdrop-blur overflow-auto h-full border-r border-lime-400">
+<div transition:slide={{axis: "x", }} class="scroll-app flex flex-col gap-1 p-2 bg-zinc-950/30 backdrop-blur overflow-auto h-full border-lime-400">
     <div class="flex flex-row gap-2 text-zinc-900 w-full place-content-center">
         <button class="flex flex-row gap-1 bg-lime-500 hover:bg-lime-400 rounded-xl px-2 py-1 place-items-center" onclick={toggleModalNewPlsIsVisible}>
             <Icon icon="fa-solid:plus" />

@@ -14,12 +14,12 @@
 </script>
 
 <button onclick={()=>selectMusic(music)}>
-    <div class="flex flex-col hover:bg-stone-100/10 px-4 py-1.5 border rounded-full {isSelected ? 'border-lime-400' : 'border-transparent'}">
+    <div class="flex flex-col hover:bg-[--color-bg-scroll] px-4 py-1.5 border rounded-full {isSelected ? 'border-lime-400' : 'border-transparent'}">
         <span class="line-clamp-1 text-start">
             {music.name}
         </span>
-        <div class="flex flex-row justify-between font-light text-stone-400">
-            <span>
+        <div class="flex flex-row gap-1 justify-between font-light text-stone-400">
+            <span class="line-clamp-1 text-start">
                 {music.author}
             </span>
             <span>

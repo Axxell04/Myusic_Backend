@@ -92,6 +92,12 @@
 
     function selectMusic (music: Music) {
         musicSelected = music;
+        if (navigator.mediaSession.metadata) {
+            navigator.mediaSession.metadata.title = musicSelected.name;
+            navigator.mediaSession.metadata.artist = musicSelected.author;
+            navigator.mediaSession.metadata.album = playlistSelected?.name ?? 'Todas las canciones';
+
+        }
     }
     
     function playPreviusMusic () {
@@ -282,13 +288,44 @@
         getMusics('', {id: 0, name: "Todas las canciones"});
         getPlaylists();
         initWS();
+
+
+        if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = new window.MediaMetadata({
+            title: musicSelected?.name || "Sin título",
+            artist: musicSelected?.author || "",
+            album: playlistSelected?.id.toString() || "",
+            // artwork: [
+            //     { src: musicSelected?.cover || "default.jpg", sizes: "512x512", type: "image/jpeg" }
+            // ]
+        });
+
+        navigator.mediaSession.setActionHandler("play", () => {
+            play();
+        });
+        navigator.mediaSession.setActionHandler("pause", () => {
+            pause();
+        });
+        navigator.mediaSession.setActionHandler("previoustrack", () => {
+            playPreviusMusic();
+        });
+        navigator.mediaSession.setActionHandler("nexttrack", () => {
+            playNextMusic();
+        });
+    }
     })
 
 </script>
 
 <main class="flex flex-col h-dvh max-h-dvh w-full overflow-hidden">
     <FuncWebSocket {getPlaylists} {getMusics} {WS} {setToastMessage} {toggleModalNewPlsIsVisible} {toggleModalDeletePlsIsVisible} {toggleModalAddMusicIsVisible} {toggleModalRemoveMusicIsVisible} />
-    <audio src={musicURL} class="fixed hidden" bind:this={audioELement} controls autoplay onloadstart={e=>captureVolume(e)} onvolumechange={e=>captureVolume(e)} ontimeupdate={e=>captureCurrentTime(e)} onplay={()=>playing = true} onpause={()=>playing = false}>
+    <audio src={musicURL} class="fixed hidden" bind:this={audioELement} controls autoplay 
+    onloadstart={e=>captureVolume(e)} 
+    onvolumechange={e=>captureVolume(e)} 
+    ontimeupdate={e=>captureCurrentTime(e)} 
+    onplay={()=>playing = true} 
+    onpause={()=>playing = false}
+    >
     </audio>
     <ToastMessage {message} />
     <TopBar {getMusics} {togglePlaylistIsVisible} {playlistIsVisible} {toggleManagerMenuIsVisible} {managerMenuIsVisible} />

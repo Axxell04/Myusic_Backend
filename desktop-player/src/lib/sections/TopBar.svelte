@@ -27,7 +27,7 @@
 </script>
 
 
-<section class="flex flex-row gap-2 p-4">
+<section class="flex flex-row gap-2 p-4 bg-zinc-950/30">
     <div class="flex flex-row gap-2 p-1 border border-lime-400 bg-transparent rounded-full">
         <input bind:value={valueToSearch} type="text" class="bg-transparent outline-none pl-1 text-zinc-50" oninput={()=>getMusics(valueToSearch)} spellcheck="false" placeholder="Buscar...">
         <div class="flex flex-row gap-1">

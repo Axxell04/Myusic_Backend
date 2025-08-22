@@ -67,7 +67,7 @@
 </script>
 
 {#if volumeIsVisible}
-<div transition:slide={{axis: "y"}} class="flex flex-col px-3 border-t border-x border-lime-400">
+<div transition:slide={{axis: "y"}} class="flex flex-col px-3 border-lime-400 bg-zinc-950/30">
     <div class="flex">
         <span class="mx-auto">
             {(playerVolume*100).toFixed(0)}
@@ -79,7 +79,7 @@
 </div>
 {/if}
 
-<div class="flex flex-row p-3 gap-4 place-items-center border-t border-lime-400">
+<div class="flex flex-row p-3 gap-4 place-items-center border-lime-400 bg-zinc-950/30">
     <section class="flex flex-row gap-2">
         <button onclick={()=>{playPreviusMusic(); previusPressed()}}>
             {#if !previusIsPressed}

@@ -4,6 +4,7 @@ import datetime
 # import threading
 # import pyperclip
 from pytubefix import YouTube, Playlist
+from pytubefix.cli import on_progress
 
 from modulos import conversor
 # from modulos import online
@@ -45,14 +46,14 @@ class Core():
         #Si es una canción individual
         if not 'playlist' in link:
             try:
-                # print(3)
-                yt = YouTube(link, 'WEB')
+                print(3)
+                yt = YouTube(link, 'WEB', on_progress_callback=on_progress)
                 
                 author = yt.author.replace(' ','')
                 title = yt.title
                 
                 music_id = self.db_manager.validate_new_music(name=title, author=author)
-                #print(4)
+                print(4)
                 if music_id == 0:
                     limit = 5
                     cont = 0
@@ -149,7 +150,7 @@ class Core():
 
                     try:
                         for video in playlist:
-                            yt = YouTube(video, 'WEB')
+                            yt = YouTube(video, 'WEB', on_progress_callback=on_progress)
                             
                             music_id = self.db_manager.validate_new_music(name=yt.title, author=yt.author)
                             
