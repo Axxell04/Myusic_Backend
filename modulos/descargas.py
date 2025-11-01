@@ -15,6 +15,7 @@ class Core():
     def __init__(self) -> None:
         self.PATH_MUSIC = 'music'
         self.PATH_MP4 = os.path.join(self.PATH_MUSIC, 'mp4')
+        self.PATH_PLAYLISTS = 'music/playlist/'
         self.conversor = conversor.Core()
         self.db_manager = DB_Manager()
 
@@ -52,9 +53,11 @@ class Core():
                     while not descarga_completa and cont < limit:
                         try:
                             print(f"-- Titulo: {title} --")
-                            vid_path = yt.streams.get_lowest_resolution().download(self.PATH_MP4)
-                            print(f"PATH: {vid_path}")
-                            print(f'FILE NAME: {os.path.basename(vid_path)}')
+                            # print(f"PATH: {vid_path}")
+                            # print(f'FILE NAME: {os.path.basename(vid_path)}')
+                            # vid_path = yt.streams.get_lowest_resolution().download(self.PATH_MP4)
+                            target_path = os.path.join(self.PATH_PLAYLISTS, author)
+                            music_path = yt.streams.get_audio_only().download(target_path)
                             descarga_completa = True
                             print('-- Descarga Completa --')
                         except Exception as e:
@@ -62,13 +65,13 @@ class Core():
                             print(e)
                             
                         cont += 1
-                    music_path, conversion_completa = self.conversor.convertir(vid_path=vid_path, playlist_name=author)
-                    print(music_path)
+                    # music_path, conversion_completa = self.conversor.convertir(vid_path=vid_path, playlist_name=author)
+                    # print(music_path)
 
-                    if conversion_completa:
-                        print("-- Conversión completa --")
-                    else:
-                        print("|| Error en la conversión ||")
+                    # if conversion_completa: 
+                    #     print("-- Conversión completa --")
+                    # else:
+                    #     print("|| Error en la conversión ||")
                     
                     music_data = {
                         "name": yt.title,
@@ -103,8 +106,8 @@ class Core():
         #Si es una playlist
         else:
             try:
-                if not os.path.exists(f"{self.PATH_MP4}/newpls/"):
-                    os.mkdir(f"{self.PATH_MP4}/newpls/")
+                # if not os.path.exists(f"{self.PATH_MP4}/newpls/"):
+                #     os.mkdir(f"{self.PATH_MP4}/newpls/")
                 
                 playlist = Playlist(link)
                 playlist_title = playlist.title
@@ -141,8 +144,9 @@ class Core():
                                     try:
                                         print(f"-- Titulo: {yt.title} --")
                                         
-                                        vid_path = yt.streams.get_lowest_resolution().download(f"{self.PATH_MP4}/newpls/")
-
+                                        # vid_path = yt.streams.get_lowest_resolution().download(f"{self.PATH_MP4}/newpls/")
+                                        target_path = os.path.join(self.PATH_PLAYLISTS, author)
+                                        music_path = yt.streams.get_audio_only().download(target_path)
                                         # vid_path = yt.streams.get_lowest_resolution().
                                         descarga_completa = True
                                         print('-- Descarga Completa --')
@@ -151,26 +155,26 @@ class Core():
                                         print(e)
                                     cont += 1
 
-                                music_path, conversion_completa = self.conversor.convertir(vid_path=vid_path, playlist_name=author)
+                                # music_path, conversion_completa = self.conversor.convertir(vid_path=vid_path, playlist_name=author)
 
-                                if conversion_completa:
-                                    print(f"PATH: {music_path} | Conversión completa")
-                                    music_data = {
-                                        "name": yt.title,
-                                        "author": yt.author,
-                                        "duration": f"0{str(datetime.timedelta(seconds=yt.length))}",
-                                        "path": music_path
-                                    }
-                                    # print(music_data)
-                                    
-                                    #Añadiendo cada canción a la tabla musics
-                                    music = self.db_manager.add_music(name=music_data['name'], author=music_data['author'], duration=music_data['duration'], path=music_data['path'])
-                                    musics_data.append(music.model_dump())
-                                    
-                                    #Comprobar si se logró crear la nueva playlist
-                                    if playlist_id:
-                                        #Asociar cada canción a la nueva playlist
-                                        self.db_manager.add_musics_to_playlist(playlist_id, [music.id])
+                                # if conversion_completa:
+                                #     print(f"PATH: {music_path} | Conversión completa")
+                                #     # print(music_data)
+                                music_data = {
+                                    "name": yt.title,
+                                    "author": yt.author,
+                                    "duration": f"0{str(datetime.timedelta(seconds=yt.length))}",
+                                    "path": music_path
+                                }
+                                
+                                #Añadiendo cada canción a la tabla musics
+                                music = self.db_manager.add_music(name=music_data['name'], author=music_data['author'], duration=music_data['duration'], path=music_data['path'])
+                                musics_data.append(music.model_dump())
+                                
+                                #Comprobar si se logró crear la nueva playlist
+                                if playlist_id:
+                                    #Asociar cada canción a la nueva playlist
+                                    self.db_manager.add_musics_to_playlist(playlist_id, [music.id])
                                     
                                 else:
                                     print(f"PATH: {music_path} | Error de conversión")

@@ -3,7 +3,7 @@ import os
 
 from config import MAIN_PATH
 
-VENV_PATH = os.path.join(MAIN_PATH, "venv")
+VENV_PATH = os.path.join(MAIN_PATH, ".venv")
 
 cmd_venv = f"{os.path.join(VENV_PATH, "Scripts/activate")}"
 
